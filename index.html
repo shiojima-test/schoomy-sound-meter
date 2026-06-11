@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<!-- スクーミー 音量メーター | version: v1.0 -->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>スクーミー 音量メーター v1.0</title>
+<style>
+  :root{
+    --teal:#3AABA8;
+    --cream:#F5E4C4;
+    --orange:#E88A0A;
+    --blue:#2E8EC4;
+    --bg:#161d20;
+    --panel:#1f2a30;
+    --panel2:#2d3439;
+    --line:#39474d;
+    --txt:#eaf2f2;
+    --muted:#90a2a6;
+    --red:#e0524b;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--txt);
+    font-family:"Meiryo","Hiragino Kaku Gothic ProN",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.6;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:20px 18px 60px;}
+
+  /* ===== header ===== */
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:16px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);
+    padding-bottom:14px;margin-bottom:20px;
+  }
+  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+  .brand h1{
+    font-size:22px;margin:0;font-weight:700;letter-spacing:.02em;
+  }
+  .brand h1 b{color:var(--teal);}
+  .ver{
+    font-size:12px;color:var(--muted);
+    border:1px solid var(--line);border-radius:999px;
+    padding:2px 10px;
+  }
+  .tagline{font-size:13px;color:var(--muted);margin:0;}
+
+  /* ===== controls ===== */
+  .controls{
+    display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+    margin-bottom:22px;
+  }
+  button{
+    font-family:inherit;font-size:14px;cursor:pointer;
+    border:1px solid var(--line);border-radius:8px;
+    background:var(--panel);color:var(--txt);
+    padding:9px 16px;transition:.15s;
+  }
+  button:hover{border-color:var(--teal);}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  button.primary{background:var(--teal);border-color:var(--teal);color:#08201f;font-weight:700;}
+  button.primary:hover{filter:brightness(1.08);}
+  button.demo{background:transparent;border-style:dashed;}
+  button.danger:hover{border-color:var(--red);color:var(--red);}
+  .status{
+    display:flex;align-items:center;gap:8px;
+    font-size:13px;color:var(--muted);margin-left:4px;
+  }
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--muted);}
+  .dot.on{background:var(--teal);box-shadow:0 0 10px var(--teal);}
+  .dot.demo{background:var(--orange);box-shadow:0 0 10px var(--orange);}
+
+  /* ===== main grid ===== */
+  .grid{display:grid;grid-template-columns:300px 1fr;gap:18px;}
+  @media(max-width:760px){.grid{grid-template-columns:1fr;}}
+
+  .panel{
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:18px;
+  }
+  .panel h2{
+    font-size:13px;margin:0 0 14px;color:var(--muted);
+    font-weight:600;letter-spacing:.06em;
+    display:flex;align-items:center;gap:8px;
+  }
+  .panel h2::before{
+    content:"";width:7px;height:7px;border-radius:50%;
+    background:var(--teal);
+  }
+
+  /* ===== big number + meter ===== */
+  .readout{display:flex;gap:18px;align-items:flex-end;}
+  .num{flex:1;}
+  .num .big{
+    font-size:60px;font-weight:800;line-height:1;
+    font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+  }
+  .num .unit{font-size:14px;color:var(--muted);margin-top:6px;}
+  .meter{
+    width:46px;height:200px;border-radius:10px;
+    background:var(--panel2);border:1px solid var(--line);
+    position:relative;overflow:hidden;flex-shrink:0;
+  }
+  .meter-fill{
+    position:absolute;left:0;right:0;bottom:0;height:0%;
+    background:linear-gradient(to top,var(--teal) 0%,var(--teal) 55%,var(--orange) 80%,var(--red) 100%);
+    transition:height .06s linear;
+  }
+  .meter-peak{
+    position:absolute;left:0;right:0;height:2px;background:var(--cream);
+    bottom:0;transition:bottom .1s linear;
+  }
+
+  .stat-row{
+    display:flex;justify-content:space-between;
+    border-top:1px solid var(--line);padding:9px 0;font-size:14px;
+  }
+  .stat-row:last-child{padding-bottom:0;}
+  .stat-row .k{color:var(--muted);}
+  .stat-row .v{font-variant-numeric:tabular-nums;font-weight:600;}
+  .v.hold{color:var(--orange);}
+
+  /* ===== options ===== */
+  .opt{margin-top:6px;}
+  .seg{
+    display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;
+  }
+  .seg button{
+    border:none;border-radius:0;background:transparent;padding:7px 14px;
+    color:var(--muted);font-size:13px;
+  }
+  .seg button.active{background:var(--teal);color:#08201f;font-weight:700;}
+  .slider-wrap{margin-top:16px;}
+  .slider-wrap label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px;}
+  input[type=range]{width:100%;accent-color:var(--teal);}
+
+  /* ===== graph ===== */
+  .graph-panel{display:flex;flex-direction:column;}
+  canvas{width:100%;border-radius:10px;background:var(--panel2);display:block;}
+  .graph-foot{
+    display:flex;justify-content:space-between;
+    font-size:12px;color:var(--muted);margin-top:10px;
+  }
+
+  /* ===== guide ===== */
+  .guide{
+    margin-top:18px;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:18px;font-size:13.5px;color:var(--muted);
+  }
+  .guide b{color:var(--txt);}
+  .guide code{
+    background:var(--panel2);padding:2px 7px;border-radius:5px;
+    color:var(--cream);font-size:12.5px;
+  }
+  .guide ol{margin:10px 0 0;padding-left:20px;}
+  .guide li{margin:5px 0;}
+  .note{
+    margin-top:12px;padding:11px 14px;border-left:3px solid var(--orange);
+    background:rgba(232,138,10,.08);border-radius:0 8px 8px 0;color:var(--cream);
+    font-size:12.5px;
+  }
+  footer{
+    margin-top:34px;text-align:center;font-size:12px;color:var(--muted);
+    border-top:1px solid var(--line);padding-top:16px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <h1><b>スクーミー</b> 音量メーター</h1>
+      <span class="ver">v1.0</span>
+    </div>
+    <p class="tagline">マイクで拾った音の大きさを、数値とグラフで見る</p>
+  </header>
+
+  <div class="controls">
+    <button id="connectBtn" class="primary">🔌 USB接続</button>
+    <button id="disconnectBtn" disabled>切断</button>
+    <button id="demoBtn" class="demo">▶ デモを開始</button>
+    <button id="resetBtn" class="danger">最大値リセット</button>
+    <button id="freezeBtn">⏸ フリーズ</button>
+    <div class="status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">未接続</span>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- 左：数値とメーター -->
+    <div class="panel">
+      <h2>いまの音量</h2>
+      <div class="readout">
+        <div class="num">
+          <div class="big" id="curVal">--</div>
+          <div class="unit">相対レベル（0–100）</div>
+        </div>
+        <div class="meter">
+          <div class="meter-fill" id="meterFill"></div>
+          <div class="meter-peak" id="meterPeak"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:18px;">
+        <div class="stat-row"><span class="k">最大値ホールド</span><span class="v hold" id="holdVal">--</span></div>
+        <div class="stat-row"><span class="k">生の音量値</span><span class="v" id="rawVal">--</span></div>
+        <div class="stat-row"><span class="k">受信レート</span><span class="v" id="rateVal">-- /秒</span></div>
+      </div>
+
+      <div class="opt">
+        <h2 style="margin-top:20px;">計算方法</h2>
+        <div class="seg" id="modeSeg">
+          <button data-mode="rms" class="active">RMS（実効値）</button>
+          <button data-mode="p2p">peak-to-peak</button>
+        </div>
+        <div class="slider-wrap">
+          <label>感度（ゲイン）：<span id="gainLabel">1.0×</span></label>
+          <input type="range" id="gain" min="0.2" max="8" step="0.1" value="1.0">
+        </div>
+      </div>
+    </div>
+
+    <!-- 右：時系列グラフ -->
+    <div class="panel graph-panel">
+      <h2>音量の推移（直近 10 秒）</h2>
+      <canvas id="graph" width="720" height="320"></canvas>
+      <div class="graph-foot">
+        <span>← 10秒前</span>
+        <span id="freezeNote"></span>
+        <span>いま →</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="guide">
+    <b>使い方</b>
+    <ol>
+      <li>オレンジボードに音取得スケッチ（<code>analogRead(A5)</code> を <code>Serial.println</code>）を書き込み、PC と USB 接続します。</li>
+      <li>ブラウザは Chrome / Edge を使い、<b>USB接続</b> ボタンからポートを選択します。</li>
+      <li>マイクに向かって声や手拍子を出すと、数値・メーター・グラフが反応します。</li>
+      <li><b>RMS</b> は一般的な「音量」に近い実効値、<b>peak-to-peak</b> は瞬間の振れ幅です。感度スライダーで見やすさを調整できます。</li>
+    </ol>
+    <div class="note">
+      この値は<b>相対的な音量レベル</b>です。正確なデシベル（dB SPL）は基準音圧での校正が必要なため出していません。「大きい・小さい」を測って比べる用途に向いています。スケッチは <code>Serial.begin(9600)</code> 前提です。
+    </div>
+  </div>
+
+  <footer>
+    SchooMy 音量メーター v1.0 &nbsp;|&nbsp; 測る・比べる・つながる &nbsp;|&nbsp; fox.schoomy.com
+  </footer>
+
+</div>
+
+<script>
+"use strict";
+const VERSION = "v1.0";
+
+// ---- DOM ----
+const $ = id => document.getElementById(id);
+const connectBtn=$("connectBtn"), disconnectBtn=$("disconnectBtn"),
+      demoBtn=$("demoBtn"), resetBtn=$("resetBtn"), freezeBtn=$("freezeBtn"),
+      statusDot=$("statusDot"), statusText=$("statusText"),
+      curVal=$("curVal"), rawVal=$("rawVal"), holdVal=$("holdVal"),
+      rateVal=$("rateVal"), meterFill=$("meterFill"), meterPeak=$("meterPeak"),
+      gain=$("gain"), gainLabel=$("gainLabel"), modeSeg=$("modeSeg"),
+      freezeNote=$("freezeNote");
+const canvas=$("graph"), ctx=canvas.getContext("2d");
+
+// ---- state ----
+let port=null, reader=null, keepReading=false;
+let demo=false, demoTimer=null, frozen=false;
+let mode="rms";               // "rms" | "p2p"
+let gainVal=1.0;
+const WIN = 64;               // 音量計算の窓（直近サンプル数）
+const rawRing = new Float32Array(2048); // 生値リングバッファ
+let rawHead=0, rawCount=0;
+let curLevel=0, holdLevel=0, curRaw=0;
+const histMax=600;            // グラフ用 履歴点数
+const hist=new Float32Array(histMax);
+let histHead=0, histFilled=0;
+let sampleCount=0, lastRateT=performance.now(), rate=0;
+
+// ===== シリアル受信 =====
+async function connect(){
+  if(!("serial" in navigator)){
+    alert("このブラウザは Web Serial に未対応です。Chrome か Edge を使ってください。");
+    return;
+  }
+  try{
+    port = await navigator.serial.requestPort();
+    await port.open({baudRate:9600});
+  }catch(e){ return; } // ユーザーがキャンセル
+  stopDemo();
+  keepReading=true;
+  setStatus("connected");
+  connectBtn.disabled=true; disconnectBtn.disabled=false; demoBtn.disabled=true;
+  readLoop();
+}
+
+async function readLoop(){
+  const textDecoder=new TextDecoderStream();
+  const closed=port.readable.pipeTo(textDecoder.writable).catch(()=>{});
+  reader=textDecoder.readable.getReader();
+  let buf="";
+  try{
+    while(keepReading){
+      const {value,done}=await reader.read();
+      if(done) break;
+      buf+=value;
+      let nl;
+      while((nl=buf.indexOf("\n"))>=0){
+        const line=buf.slice(0,nl).trim();
+        buf=buf.slice(nl+1);
+        if(line){
+          const n=parseFloat(line);
+          if(!isNaN(n)) pushSample(n);
+        }
+      }
+    }
+  }catch(e){}
+  try{ reader.releaseLock(); }catch(e){}
+  await closed;
+}
+
+async function disconnect(){
+  keepReading=false;
+  try{ if(reader) await reader.cancel(); }catch(e){}
+  try{ if(port) await port.close(); }catch(e){}
+  port=null; reader=null;
+  setStatus("idle");
+  connectBtn.disabled=false; disconnectBtn.disabled=true; demoBtn.disabled=false;
+}
+
+// ===== サンプル投入 =====
+function pushSample(v){
+  rawRing[rawHead]=v;
+  rawHead=(rawHead+1)%rawRing.length;
+  if(rawCount<rawRing.length) rawCount++;
+  sampleCount++;
+}
+
+// ===== 音量計算（直近WIN個から DC除去して RMS / p2p）=====
+function computeLevel(){
+  const n=Math.min(WIN, rawCount);
+  if(n<4) return {level:0, raw:0};
+  let sum=0, mn=Infinity, mx=-Infinity;
+  for(let i=0;i<n;i++){
+    const idx=(rawHead-1-i+rawRing.length)%rawRing.length;
+    const x=rawRing[idx];
+    sum+=x;
+    if(x<mn)mn=x; if(x>mx)mx=x;
+  }
+  const mean=sum/n;
+  let raw;
+  if(mode==="p2p"){
+    raw=mx-mn;
+  }else{
+    let sq=0;
+    for(let i=0;i<n;i++){
+      const idx=(rawHead-1-i+rawRing.length)%rawRing.length;
+      const d=rawRing[idx]-mean;
+      sq+=d*d;
+    }
+    raw=Math.sqrt(sq/n);
+  }
+  // 相対レベル 0-100 にスケール（ゲイン込み・基準は経験値）
+  const base = mode==="p2p" ? 600 : 200;
+  let level=(raw/base)*gainVal*100;
+  if(level>100)level=100; if(level<0)level=0;
+  return {level, raw};
+}
+
+// ===== 表示ループ =====
+function tick(){
+  // 受信レート更新（1秒ごと）
+  const now=performance.now();
+  if(now-lastRateT>=1000){
+    rate=Math.round(sampleCount*1000/(now-lastRateT));
+    sampleCount=0; lastRateT=now;
+    rateVal.textContent = rate+" /秒";
+  }
+
+  if(!frozen){
+    const {level,raw}=computeLevel();
+    curLevel=level; curRaw=raw;
+    if(level>holdLevel) holdLevel=level;
+
+    // 履歴へ（毎フレーム1点、10秒で約600点想定）
+    hist[histHead]=level;
+    histHead=(histHead+1)%histMax;
+    if(histFilled<histMax) histFilled++;
+
+    // 数値・メーター
+    const active = (port||demo);
+    curVal.textContent = active ? level.toFixed(0) : "--";
+    rawVal.textContent = active ? raw.toFixed(1) : "--";
+    holdVal.textContent = active ? holdLevel.toFixed(0) : "--";
+    meterFill.style.height = level+"%";
+    meterPeak.style.bottom = holdLevel+"%";
+  }
+  drawGraph();
+  requestAnimationFrame(tick);
+}
+
+// ===== グラフ描画 =====
+function drawGraph(){
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  // グリッド
+  ctx.strokeStyle="#39474d"; ctx.lineWidth=1;
+  ctx.fillStyle="#6f8388"; ctx.font="11px Meiryo, sans-serif";
+  for(let i=0;i<=4;i++){
+    const y=H-(i/4)*(H-24)-12;
+    ctx.beginPath();ctx.moveTo(40,y);ctx.lineTo(W-6,y);ctx.stroke();
+    ctx.fillText((i*25).toString(), 8, y+4);
+  }
+  // 波形（音量履歴）
+  if(histFilled>1){
+    const x0=44, plotW=W-50, plotH=H-24, baseY=H-12;
+    ctx.beginPath();
+    for(let i=0;i<histFilled;i++){
+      const idx=(histHead-histFilled+i+histMax)%histMax;
+      const x=x0 + (i/(histMax-1))*plotW;
+      const y=baseY - (hist[idx]/100)*plotH;
+      if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle="#3AABA8"; ctx.lineWidth=2; ctx.stroke();
+    // 塗り
+    ctx.lineTo(x0+((histFilled-1)/(histMax-1))*plotW, baseY);
+    ctx.lineTo(x0, baseY);
+    ctx.closePath();
+    ctx.fillStyle="rgba(58,171,168,.14)"; ctx.fill();
+  }
+}
+
+// ===== デモ =====
+function startDemo(){
+  if(port) return;
+  demo=true; setStatus("demo");
+  connectBtn.disabled=true; disconnectBtn.disabled=true;
+  demoBtn.textContent="■ デモ停止";
+  let t=0;
+  demoTimer=setInterval(()=>{
+    // 擬似マイク波形：中央2048に複数sin＋ノイズ、音量はゆっくり増減
+    const env = 0.5+0.5*Math.sin(t/40); // 0..1 ゆっくり
+    for(let k=0;k<6;k++){
+      const s = 2048
+        + env*500*Math.sin(t*0.9)
+        + env*250*Math.sin(t*2.3+1)
+        + (Math.random()-0.5)*120*env;
+      pushSample(s);
+      t+=0.25;
+    }
+  },16);
+}
+function stopDemo(){
+  if(demoTimer){clearInterval(demoTimer);demoTimer=null;}
+  demo=false; demoBtn.textContent="▶ デモを開始";
+  if(!port) setStatus("idle");
+}
+function toggleDemo(){ demo? stopDemo() : startDemo(); }
+
+// ===== status =====
+function setStatus(s){
+  statusDot.className="dot";
+  if(s==="connected"){statusDot.classList.add("on");statusText.textContent="接続中";}
+  else if(s==="demo"){statusDot.classList.add("demo");statusText.textContent="デモ動作中";}
+  else{statusText.textContent="未接続";}
+}
+
+// ===== events =====
+connectBtn.onclick=connect;
+disconnectBtn.onclick=disconnect;
+demoBtn.onclick=toggleDemo;
+resetBtn.onclick=()=>{holdLevel=0;};
+freezeBtn.onclick=()=>{
+  frozen=!frozen;
+  freezeBtn.textContent=frozen?"▶ 再開":"⏸ フリーズ";
+  freezeNote.textContent=frozen?"⏸ フリーズ中":"";
+};
+gain.oninput=e=>{gainVal=parseFloat(e.target.value);gainLabel.textContent=gainVal.toFixed(1)+"×";};
+modeSeg.querySelectorAll("button").forEach(b=>{
+  b.onclick=()=>{
+    modeSeg.querySelectorAll("button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    mode=b.dataset.mode; holdLevel=0;
+  };
+});
+
+// 起動
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
